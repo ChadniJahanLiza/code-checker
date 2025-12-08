@@ -1,4 +1,5 @@
 package com.my.playerall
+
 // Player Activity
 import android.annotation.SuppressLint
 import android.app.AppOpsManager
@@ -15,9 +16,9 @@ import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import android.view.GestureDetector
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -30,14 +31,11 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.my.playerall.databinding.ActivityPlayerBinding
-import com.my.playerall.databinding.BoosterBinding
-import com.my.playerall.databinding.MoreFeaturesBinding
-import com.my.playerall.databinding.SpeedDialogBinding
 import com.github.vkay94.dtpv.youtube.YouTubeOverlay
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.ExoPlayer
@@ -48,9 +46,14 @@ import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
 import com.google.android.exoplayer2.ui.DefaultTimeBar
 import com.google.android.exoplayer2.ui.TimeBar
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.my.playerall.databinding.ActivityPlayerBinding
+import com.my.playerall.databinding.BoosterBinding
+import com.my.playerall.databinding.MoreFeaturesBinding
+import com.my.playerall.databinding.SpeedDialogBinding
 import java.io.File
 import java.text.DecimalFormat
 import kotlin.math.abs
+
 class PlayerActivity : AppCompatActivity(), AudioManager.OnAudioFocusChangeListener, GestureDetector.OnGestureListener {
     private lateinit var binding: ActivityPlayerBinding
     private lateinit var playPauseBtn: ImageButton
@@ -60,10 +63,15 @@ class PlayerActivity : AppCompatActivity(), AudioManager.OnAudioFocusChangeListe
     private lateinit var gestureDetectorCompat: GestureDetectorCompat
     private var minSwipeY: Float = 0f
     private var minSwipeX: Float = 0f
+
+    // FIXED: player is moved out of companion object to fix accessibility errors (Backing field error)
+    private lateinit var player: ExoPlayer
+
     companion object{
         private var audioManager: AudioManager? = null
-        private lateinit var player: ExoPlayer
-        lateinit var playerList: ArrayList<Video>
+        
+        // FIXED: playerList initialized to avoid lateinit issues in some scenarios
+        var playerList: ArrayList<Video> = ArrayList() 
         var position: Int = -1
         private var repeat: Boolean = false
         private var isFullscreen: Boolean = false
@@ -78,6 +86,7 @@ class PlayerActivity : AppCompatActivity(), AudioManager.OnAudioFocusChangeListe
         private var volume: Int = 0
         private var isSpeedChecked: Boolean = false
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -100,29 +109,27 @@ class PlayerActivity : AppCompatActivity(), AudioManager.OnAudioFocusChangeListe
             controller.hide(WindowInsetsCompat.Type.systemBars())
             controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
+
         try {
-            //for handling video file intent (Improved Version)
-            if(intent.data?.scheme.contentEquals("content")){
+            //for handling video file intent (Improved & FIXED Version for content URI crash)
+            if(intent.data?.scheme.contentEquals("content") || intent.data?.scheme.contentEquals("file")){
                 playerList = ArrayList()
                 position = 0
-                val cursor = contentResolver.query(intent.data!!, arrayOf(MediaStore.Video.Media.DATA), null, null,
-                    null)
-                cursor?.let {
-                    it.moveToFirst()
-                    try {
-                        val path = it.getString(it.getColumnIndexOrThrow(MediaStore.Video.Media.DATA))
-                        val file = File(path)
-                        val video = Video(id = "", title = file.name, duration = 0L, artUri = Uri.fromFile(file), path = path, size = "", folderName = "")
-                        playerList.add(video)
-                        cursor.close()
-                    }catch (e: Exception){
-                        val tempPath = getPathFromURI(context = this, uri = intent.data!!)
-                        val tempFile = File(tempPath)
-                        val video = Video(id = "", title = tempFile.name, duration = 0L, artUri = Uri.fromFile(tempFile), path = tempPath, size = "", folderName = "")
-                        playerList.add(video)
-                        cursor.close()
-                    }
-                }
+                val uri = intent.data!!
+                
+                // Safely get the file name from the URI
+                val title = getFileNameFromUri(this, uri) ?: uri.lastPathSegment ?: "Unknown Video"
+
+                val video = Video(
+                    id = nowPlayingId,
+                    title = title,
+                    duration = 0L,
+                    artUri = uri,
+                    path = uri.toString(),
+                    size = "",
+                    folderName = ""
+                )
+                playerList.add(video)
                 createPlayer()
                 initializeBinding()
             }
@@ -132,6 +139,7 @@ class PlayerActivity : AppCompatActivity(), AudioManager.OnAudioFocusChangeListe
             }
         }catch (e: Exception){Toast.makeText(this, e.toString(), Toast.LENGTH_LONG).show()}
     }
+
     @SuppressLint("PrivateResource")
     private fun initializeLayout(){
         when(intent.getStringExtra("class")){
@@ -169,6 +177,7 @@ class PlayerActivity : AppCompatActivity(), AudioManager.OnAudioFocusChangeListe
                 .setImageResource(com.github.vkay94.dtpv.R.drawable.exo_controls_repeat_all)
         }
     }
+
     @SuppressLint("SetTextI18n", "SourceLockedOrientationActivity", "PrivateResource")
     private fun initializeBinding(){
 
@@ -322,7 +331,7 @@ class PlayerActivity : AppCompatActivity(), AudioManager.OnAudioFocusChangeListe
                     }
                     else{
                         val intent = Intent("android.settings.PICTURE_IN_PICTURE_SETTINGS",
-                            Uri.parse("package:$packageName"))
+                            "package:$packageName".toUri())
                         startActivity(intent)
                     }
                 }else{
@@ -333,15 +342,21 @@ class PlayerActivity : AppCompatActivity(), AudioManager.OnAudioFocusChangeListe
             }
         }
     }
+
     private fun createPlayer(){
-        try { player.release() }catch (_: Exception){}
+        // FIXED: Safely release player
+        if(::player.isInitialized) player.release()
+        
         if(!isSpeedChecked) speed = 1.0f
         trackSelector = DefaultTrackSelector(this)
         videoTitle.text = playerList[position].title
         videoTitle.isSelected = true
         player = ExoPlayer.Builder(this).setTrackSelector(trackSelector).build()
         doubleTapEnable()
+        
+        // Use the stored URI directly
         val mediaItem = MediaItem.fromUri(playerList[position].artUri)
+        
         player.setMediaItem(mediaItem)
         player.setPlaybackSpeed(speed)
         player.prepare()
@@ -358,19 +373,23 @@ class PlayerActivity : AppCompatActivity(), AudioManager.OnAudioFocusChangeListe
         nowPlayingId = playerList[position].id
         seekBarFeature()
     }
+
     private fun playVideo(){
         playPauseBtn.setImageResource(R.drawable.pause_icon)
         player.play()
     }
+
     private fun pauseVideo(){
         playPauseBtn.setImageResource(R.drawable.play_icon)
         player.pause()
     }
+
     private fun nextPrevVideo(isNext: Boolean = true){
         if(isNext) setPosition()
         else setPosition(isIncrement = false)
         createPlayer()
     }
+
     private fun setPosition(isIncrement: Boolean = true){
         if(!repeat){
             if(isIncrement){
@@ -384,6 +403,7 @@ class PlayerActivity : AppCompatActivity(), AudioManager.OnAudioFocusChangeListe
             }
         }
     }
+
     private fun playInFullscreen(enable: Boolean){
         if(enable){
             binding.playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
@@ -397,6 +417,7 @@ class PlayerActivity : AppCompatActivity(), AudioManager.OnAudioFocusChangeListe
             findViewById<ImageButton>(R.id.fullScreenBtn).setColorFilter(ContextCompat.getColor(this, R.color.white), PorterDuff.Mode.SRC_IN)
         }
     }
+
     private fun changeSpeed(isIncrement: Boolean){
         if(isIncrement){
             if(speed <= 4.9f){
@@ -410,6 +431,7 @@ class PlayerActivity : AppCompatActivity(), AudioManager.OnAudioFocusChangeListe
         }
         player.setPlaybackSpeed(speed)
     }
+
     @Deprecated("Deprecated in Java")
     @SuppressLint("MissingSuperCall")
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean) {
@@ -423,22 +445,26 @@ class PlayerActivity : AppCompatActivity(), AudioManager.OnAudioFocusChangeListe
             }
             startActivity(intent)
         }
-        if(!isInPictureInPictureMode) pauseVideo()
+        if(!isInPictureInPictureMode && ::player.isInitialized) pauseVideo()
     }
+
     override fun onDestroy() {
         super.onDestroy()
-        player.pause()
-        audioManager?.abandonAudioFocus(this)
+        if(::player.isInitialized) player.pause()
+        audioManager?.abandonAudioFocus(this) // Safe call
     }
+
     override fun onAudioFocusChange(focusChange: Int) {
-        if(focusChange <= 0) pauseVideo()
+        if(focusChange <= 0 && ::player.isInitialized) pauseVideo()
     }
+
     override fun onResume() {
         super.onResume()
         if(audioManager == null) audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        audioManager!!.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN)
+        audioManager?.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN) // Safe call
         if(brightness != 0) setScreenBrightness(brightness)
     }
+
     @SuppressLint("ClickableViewAccessibility")
     private fun doubleTapEnable(){
         binding.playerView.player = player
@@ -470,6 +496,7 @@ class PlayerActivity : AppCompatActivity(), AudioManager.OnAudioFocusChangeListe
             return@setOnTouchListener false
         }
     }
+
     private fun seekBarFeature(){
         findViewById<DefaultTimeBar>(com.github.vkay94.dtpv.R.id.exo_progress).addListener(object: TimeBar.OnScrubListener{
             override fun onScrubStart(timeBar: TimeBar, position: Long) {
@@ -483,97 +510,106 @@ class PlayerActivity : AppCompatActivity(), AudioManager.OnAudioFocusChangeListe
             }
         })
     }
+
     override fun onDown(p0: MotionEvent): Boolean {
         minSwipeY = 0f
         return false
     }
+
     override fun onShowPress(p0: MotionEvent) = Unit
     override fun onSingleTapUp(p0: MotionEvent): Boolean = false
     override fun onLongPress(p0: MotionEvent) = Unit
+
     override fun onFling(e1: MotionEvent?, p0: MotionEvent, p2: Float, p3: Float): Boolean = false
+
     override fun onScroll(
         e1: MotionEvent?,
         event: MotionEvent,
         distanceX: Float,
         distanceY: Float
     ): Boolean {
+        if (!::player.isInitialized || isLocked) return false // Do not scroll if player not ready or locked
+        
         minSwipeY += distanceY
         minSwipeX += distanceX
         val sWidth = Resources.getSystem().displayMetrics.widthPixels
         val sHeight = Resources.getSystem().displayMetrics.heightPixels
-        // 10 px border is not working code
-        val border = 10 * Resources.getSystem().displayMetrics.density.toInt()
+        
+        // 10 dp border check (using density for correct calculation)
+        val border = (10 * Resources.getSystem().displayMetrics.density).toInt()
         if (event.x < border || event.y < border || event.x > sWidth - border || event.y > sHeight - border)
             return false
-        // minSwipeY for slowly increasing brightness & volume on swipe
-        // minSwipeX for detecting horizontal swipes
-        if (abs(minSwipeX) > 100) {
+        
+        // Check if the gesture is primarily horizontal or vertical
+        if (abs(minSwipeX) > 100 || abs(minSwipeY) > 100) {
+            
             if (abs(distanceX) > abs(distanceY)) {
-                // Horizontal swipe
-                if (distanceX > 0) {
-                    // Swipe right for forward (adjust the time as needed)
-                    player.seekTo(player.currentPosition - 5000)
-                } else {
-                    // Swipe left for rewind (adjust the time as needed)
-                    player.seekTo(player.currentPosition + 5000)
+                // Horizontal swipe (seeking)
+                if (abs(minSwipeX) > 100) { // Only seek if significant horizontal movement
+                    val seekTime = if (distanceX > 0) -5000L else 5000L
+                    player.seekTo(player.currentPosition + seekTime)
+                    minSwipeX = 0f // Reset X after a seek
                 }
-                minSwipeX = 0f
             } else {
-                // Vertical swipe
-                if (event.x < sWidth / 2) {
-                    // brightness
-                    playPauseBtn.visibility = View.GONE
-                    binding.brightnessIcon.visibility = View.VISIBLE
-                    binding.volumeIcon.visibility = View.GONE
+                // Vertical swipe (brightness/volume)
+                if (abs(minSwipeY) > 100) { // Only adjust if significant vertical movement
+                    if (event.x < sWidth / 2) {
+                        // brightness
+                        playPauseBtn.visibility = View.GONE
+                        binding.brightnessIcon.visibility = View.VISIBLE
+                        binding.volumeIcon.visibility = View.GONE
 
-                    val increase = distanceY > 0
-                    val newValue = if (increase) brightness + 1 else brightness - 1
-                    if (newValue in 0..15) brightness = newValue
-                    binding.brightnessIcon.text = brightness.toString()
-                    setScreenBrightness(brightness)
-                } else {
-                    // volume
-                    binding.brightnessIcon.visibility = View.GONE
-                    binding.volumeIcon.visibility = View.VISIBLE
-                    playPauseBtn.visibility = View.GONE
+                        val increase = distanceY > 0
+                        val newValue = if (increase) brightness + 1 else brightness - 1
+                        if (newValue in 0..15) brightness = newValue
+                        binding.brightnessIcon.text = brightness.toString()
+                        setScreenBrightness(brightness)
+                    } else {
+                        // volume
+                        binding.brightnessIcon.visibility = View.GONE
+                        binding.volumeIcon.visibility = View.VISIBLE
+                        playPauseBtn.visibility = View.GONE
 
-                    val maxVolume = audioManager!!.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                    val increase = distanceY > 0
-                    val newValue = if (increase) volume + 1 else volume - 1
-                    if (newValue in 0..maxVolume) volume = newValue
-                    binding.volumeIcon.text = volume.toString()
-                    audioManager!!.setStreamVolume(AudioManager.STREAM_MUSIC, volume, 0)
+                        val maxVolume = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15 // Safe call with default value
+                        val increase = distanceY > 0
+                        val newValue = if (increase) volume + 1 else volume - 1
+                        if (newValue in 0..maxVolume) volume = newValue
+                        binding.volumeIcon.text = volume.toString()
+                        audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, volume, 0)
+                    }
+                    minSwipeY = 0f // Reset Y after an adjustment
                 }
-                minSwipeY = 0f
             }
             playPauseBtn.visibility = View.VISIBLE
         }
         return true
     }
+
     private fun setScreenBrightness(value: Int){
         val d = 1.0f/15
         val lp = this.window.attributes
         lp.screenBrightness = d * value
         this.window.attributes = lp
     }
-    //used to get path of video selected by user (if column data fails to get path)
-    private fun getPathFromURI(context: Context , uri : Uri): String {
-        var filePath = ""
-        // ExternalStorageProvider
-        val docId = DocumentsContract.getDocumentId(uri)
-        val split = docId.split(':')
-        val type = split[0]
 
-        return if ("primary".equals(type, ignoreCase = true)) {
-            "${Environment.getExternalStorageDirectory()}/${split[1]}"
-        } else {
-            //getExternalMediaDirs() added in API 21
-            val external = context.externalMediaDirs
-            if (external.size > 1) {
-                filePath = external[1].absolutePath
-                filePath = filePath.substring(0, filePath.indexOf("Android")) + split[1]
+    // New function for safely getting the filename from a URI
+    private fun getFileNameFromUri(context: Context, uri: Uri): String? {
+        var fileName: String? = null
+        if (uri.scheme == "content") {
+            // Use OpenableColumns.DISPLAY_NAME for content URIs
+            val cursor = context.contentResolver.query(uri, null, null, null, null)
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val displayNameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (displayNameIndex != -1) {
+                        fileName = it.getString(displayNameIndex)
+                    }
+                }
             }
-            filePath
+        } else if (uri.scheme == "file") {
+            // For file URIs, use the last segment
+            fileName = uri.lastPathSegment
         }
+        return fileName
     }
 }
