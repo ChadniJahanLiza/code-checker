@@ -5,6 +5,7 @@
     android:layout_height="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:background="#42000000">
+
   <LinearLayout
       android:id="@+id/topController"
       android:layout_width="match_parent"
@@ -46,8 +47,6 @@
         android:layout_marginEnd="50dp"
         android:padding="10dp"/>
   </LinearLayout>
-
-
   <ImageButton
       android:id="@+id/playPauseBtn"
       android:layout_width="80dp"
@@ -63,73 +62,15 @@
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent"/>
 
-
-  <LinearLayout
-      android:id="@+id/bottomController"
-      android:layout_width="match_parent"
-      android:layout_height="40dp"
-      app:layout_constraintBottom_toBottomOf="parent"
-      app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintStart_toStartOf="parent"
-      android:orientation="horizontal"
-      android:gravity="end|bottom">
-
-    <ImageButton
-        android:id="@+id/orientationBtn"
-        android:layout_width="45dp"
-        android:layout_height="match_parent"
-        android:background="?attr/selectableItemBackground"
-        android:src="@drawable/orientation_icon"
-        android:contentDescription="@string/orientation"
-        app:tint="@color/white" />
-
-    <ImageButton
-        android:id="@+id/repeatBtn"
-        android:layout_width="45dp"
-        android:layout_height="match_parent"
-        android:background="?attr/selectableItemBackground"
-        android:src="@drawable/exo_controls_repeat_all"
-        android:contentDescription="@string/repeat_btn"
-        app:tint="@color/white"
-        tools:ignore="PrivateResource" />
-
-    <ImageButton
-        android:id="@+id/prevBtn"
-        android:layout_width="45dp"
-        android:layout_height="match_parent"
-        android:background="?attr/selectableItemBackground"
-        android:src="@drawable/previous_icon"
-        android:contentDescription="@string/prev_btn"
-        app:tint="@color/white"/>
-
-    <ImageButton
-        android:id="@+id/nextBtn"
-        android:layout_width="45dp"
-        android:layout_height="match_parent"
-        android:background="?attr/selectableItemBackground"
-        android:src="@drawable/next_icon"
-        android:contentDescription="@string/next_btn"
-        app:tint="@color/white" />
-    <ImageButton
-        android:id="@+id/fullScreenBtn"
-        android:layout_width="45dp"
-        android:layout_height="match_parent"
-        android:background="?attr/selectableItemBackground"
-        android:src="@drawable/fullscreen_icon"
-        android:contentDescription="@string/fullscreen_btn"
-        app:tint="@color/white" />
-  </LinearLayout>
-
   <com.google.android.exoplayer2.ui.DefaultTimeBar
       android:id="@id/exo_progress"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginHorizontal="2dp"
-      android:layout_marginBottom="40dp"
-      app:buffered_color="#80FFFFFF"
-      app:layout_constraintBottom_toBottomOf="parent"
+      
+      app:layout_constraintBottom_toTopOf="@+id/bottomController" 
+      
       app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintHorizontal_bias="0.444"
       app:layout_constraintStart_toStartOf="parent"
       app:played_color="@color/green"
       app:scrubber_color="@color/white"
@@ -138,18 +79,22 @@
       app:unplayed_color="#80FFFFFF"/>
 
   <LinearLayout
+      android:id="@+id/bottomController"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:orientation="horizontal"
       app:layout_constraintBottom_toBottomOf="parent"
       app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintStart_toStartOf="parent">
+      app:layout_constraintStart_toStartOf="parent"
+      android:orientation="horizontal"
+      android:paddingHorizontal="10dp"
+      android:paddingVertical="5dp"
+      android:background="#42000000"
+      android:gravity="center_vertical">
 
     <TextView
         android:id="@id/exo_position"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="10dp"
         android:text="@string/duration"
         android:textColor="@color/white"
         android:textSize="16sp"
@@ -158,7 +103,6 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginVertical="10dp"
         android:text="@string/semi_colon"
         android:textColor="@color/white"
         android:textSize="16sp"
@@ -168,12 +112,62 @@
         android:id="@id/exo_duration"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="10dp"
         android:text="@string/loading"
         android:textColor="@color/white"
         android:textSize="16sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:layout_marginEnd="10dp"/>
 
+    <Space
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"/>
+        
+    <ImageButton
+        android:id="@+id/orientationBtn"
+        android:layout_width="45dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackground"
+        android:src="@drawable/orientation_icon"
+        android:contentDescription="@string/orientation"
+        app:tint="@color/white" />
+
+    <ImageButton
+        android:id="@+id/repeatBtn"
+        android:layout_width="45dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackground"
+        android:src="@drawable/exo_controls_repeat_all"
+        android:contentDescription="@string/repeat_btn"
+        app:tint="@color/white"
+        tools:ignore="PrivateResource" />
+
+    <ImageButton
+        android:id="@+id/prevBtn"
+        android:layout_width="45dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackground"
+        android:src="@drawable/previous_icon"
+        android:contentDescription="@string/prev_btn"
+        app:tint="@color/white"/>
+
+    <ImageButton
+        android:id="@+id/nextBtn"
+        android:layout_width="45dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackground"
+        android:src="@drawable/next_icon"
+        android:contentDescription="@string/next_btn"
+        app:tint="@color/white" />
+        
+    <ImageButton
+        android:id="@+id/fullScreenBtn"
+        android:layout_width="45dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackground"
+        android:src="@drawable/fullscreen_icon"
+        android:contentDescription="@string/fullscreen_btn"
+        app:tint="@color/white" />
   </LinearLayout>
-
+  
 </androidx.constraintlayout.widget.ConstraintLayout>
