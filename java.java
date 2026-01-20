@@ -1,22 +1,10 @@
-<application
-    android:name=".MyApp"
-    android:allowBackup="true"
-    android:dataExtractionRules="@xml/data_extraction_rules"
-    android:fullBackupContent="@xml/backup_rules"
-    android:icon="@mipmap/ic_launcher"
-    android:label="@string/app_name"
-    android:roundIcon="@mipmap/ic_launcher_round"
-    android:supportsRtl="true"
-    android:theme="@style/Theme.SpokenEnglish">
-
-    <activity
-        android:name=".Conversation_Eight_Activity"
-        android:exported="false" />
-
-    <activity
-        android:name=".Conversation_Seven_Activity"
-        android:exported="false" />
-
-    <!-- অন্য সব Activity এখানেই থাকবে -->
-
-</application>
+<string name="english_Learning_Spoken_Practice_Details_Six">পথে চলতে চলতে অচেনা কোনো লোককে ডেকে সঠিক পথ সম্বন্ধে জিজ্ঞাসা করতে হলে, অন্যমনস্ক বা নিজের কাজে ব্যস্ত লোকটিকে কোন প্রয়োজনে ডাকতে হলে, ইত্যাদি ক্ষেত্রেপ্রথমে প্রয়োজন হয় ভদ্রতাপূর্ণভাবে কারো দৃষ্টি আকর্ষণ করা। বাংলায় এরূপ কাজ আমরা ‘এই যে ভাই শুনুন’ ধাঁচের বাক্য বা উক্তি দ্বারা সম্পন্ন করে থাকি। ইংরেজিতে এরূপক্ষেত্রে প্রাথমিক পর্যায়ের ভদ্রতাপূর্ণ express গুলো নিচে দেওয়া হলো--
+        \n\nExcuse me ---- শুনুন
+        \n\nListen ---- শুনুন
+        \n\nOh, come on! ---- আহ, একটু বুঝতে চেষ্টা করো তো!
+        \n\nDo you follow me? ---- আমার কথা বুঝতে পারছো তো?
+        \n\nAre you with me? ---- আমার কথা শুনছেন তো?
+        \n\nAm I clear to you? ---- আমি কি বিষয়টা বুঝাতে পেরেছি?
+        \n\nAm I not right? ---- ঠিক বলিনি?
+        \n\nIs not it true? --- এটা কি সত্য নয়?
+        \n\nIs not it really true? ---- এটা কি আসলেই সত্য নয়?\n\n</string>
